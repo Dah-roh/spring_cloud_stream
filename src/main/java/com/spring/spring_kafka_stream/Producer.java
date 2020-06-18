@@ -1,28 +1,41 @@
 package com.spring.spring_kafka_stream;
 
 
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.messaging.Source;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 
-@EnableBinding(Source.class)
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
 public class Producer {
 
-    private Source mySource;
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapAddress;
 
-    public Producer(Source mySource) {
-
-        super();
-        this.mySource = mySource;
+    @Bean
+    public ProducerFactory<String, String> producerFactory() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
+        configProps.put(
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configProps.put(
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
     }
 
-    public Source getMysource() {
-
-        return mySource;
+    @Bean
+    public KafkaTemplate<String, String> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
     }
-
-    public void setMysource(Source mysource) {
-
-        mySource = mysource;
-    }
-
 }

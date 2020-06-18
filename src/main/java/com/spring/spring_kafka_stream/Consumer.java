@@ -1,36 +1,47 @@
 package com.spring.spring_kafka_stream;
 
-import com.spring.spring_kafka_stream.domain.ChatMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.cloud.stream.annotation.EnableBinding;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.cloud.stream.messaging.Sink;
-import org.springframework.messaging.handler.annotation.Payload;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
+import java.util.HashMap;
+import java.util.Map;
 
-@EnableBinding(Sink.class)
+@EnableKafka
+@Configuration
 public class Consumer {
 
-    private static final Logger logger = LoggerFactory.getLogger(Consumer.class);
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapAddress;
 
-    //the sink.input from the sink.class for enabling binding is used as the streamlistener target
-    @StreamListener(target = Sink.INPUT)
-    public void consume(String message) {
+    @Value("${spring.kafka.consumer.group-id}")
+    private String groupId;
 
-        logger.info("recieved a string message : " + message);
+    @Bean
+    public ConsumerFactory<String, String> consumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
+        props.put(
+                ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    @StreamListener(target = Sink.INPUT, condition = "headers['type']=='chat'")
-    public void handle(@Payload ChatMessage message) {
-
-        final DateTimeFormatter df = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)
-                .withZone(ZoneId.systemDefault());
-        final String time = df.format(Instant.ofEpochMilli(message.getTime()));
-        logger.info("recieved a complex message : [{}]: {}", time, message.getContents());
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory
+                = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        return factory;
     }
 }
